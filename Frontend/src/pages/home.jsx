@@ -1,25 +1,33 @@
 import React, { useState, useRef } from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
-const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) => {
+const NotesApp = () => {
+  const user = useSelector((state) => state.auth.user);
   const [darkMode, setDarkMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [notes, setNotes] = useState([]);
+  const navigate = useNavigate();
   const [newNote, setNewNote] = useState({
     title: "",
     content: "",
     tags: "",
-    image: null
+    image: null,
   });
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  const allTags = [...new Set(notes.flatMap(note => note.tags || []))];
-  const filteredNotes = notes.filter(note =>
-    (note.title + note.content).toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (selectedTags.length === 0 || selectedTags.every(tag => note.tags?.includes(tag)))
+  const allTags = [...new Set(notes.flatMap((note) => note.tags || []))];
+  const filteredNotes = notes.filter(
+    (note) =>
+      (note.title + note.content)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) &&
+      (selectedTags.length === 0 ||
+        selectedTags.every((tag) => note.tags?.includes(tag)))
   );
 
   const closeModal = () => {
@@ -38,8 +46,11 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
     const newNoteObj = {
       ...note,
       id: Date.now(),
-      tags: note.tags.split(",").map((t) => t.trim()).filter(Boolean),
-      createdAt: new Date().toLocaleString()
+      tags: note.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      createdAt: new Date().toLocaleString(),
     };
     setNotes((prev) => [...prev, newNoteObj]);
   };
@@ -57,8 +68,11 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
           ? {
               ...updatedNote,
               id: editingNote.id,
-              tags: updatedNote.tags.split(",").map((t) => t.trim()).filter(Boolean),
-              createdAt: editingNote.createdAt
+              tags: updatedNote.tags
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean),
+              createdAt: editingNote.createdAt,
             }
           : n
       )
@@ -70,7 +84,8 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
   };
 
   const handleLogout = () => {
-    alert("Logged out");
+    localStorage.removeItem("_token");
+    navigate("/login");
   };
 
   const handleDrag = (e) => {
@@ -104,18 +119,24 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
   };
 
   return (
- <div
-      className={`min-h-screen transition-colors duration-300 ${darkMode ? "dark bg-gray-900" : "bg-gray-50"}`}
+    <div
+      className={`min-h-screen transition-colors duration-300 ${
+        darkMode ? "dark bg-gray-900" : "bg-gray-50"
+      }`}
     >
       <header
-        className={`sticky top-0 z-50 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-b shadow-sm`}
+        className={`sticky top-0 z-50 ${
+          darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+        } border-b shadow-sm`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <i className="fas fa-sticky-note text-2xl text-blue-600 mr-3"></i>
               <h1
-                className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}
+                className={`text-xl font-bold ${
+                  darkMode ? "text-white" : "text-gray-900"
+                }`}
               >
                 NotesApp
               </h1>
@@ -164,18 +185,26 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
                 </button>
 
                 <div
-                  className={`absolute right-0 mt-2 w-48 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200`}
+                  className={`absolute right-0 mt-2 w-48 ${
+                    darkMode
+                      ? "bg-gray-800 border-gray-700"
+                      : "bg-white border-gray-200"
+                  } border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200`}
                 >
                   <div className="p-3 border-b border-gray-200 dark:border-gray-700">
                     <p
-                      className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}
+                      className={`text-sm font-medium ${
+                        darkMode ? "text-white" : "text-gray-900"
+                      }`}
                     >
-                      {user?.name}
+                      {user?.name || "Anonymous"}
                     </p>
                     <p
-                      className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}
+                      className={`text-xs ${
+                        darkMode ? "text-gray-400" : "text-gray-600"
+                      }`}
                     >
-                      {user?.email}
+                      {user?.email || "unknown@example.com"}
                     </p>
                   </div>
                   <button
@@ -214,12 +243,16 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
       </header>
 
       <div
-        className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-b px-4 sm:px-6 lg:px-8 py-3`}
+        className={`${
+          darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+        } border-b px-4 sm:px-6 lg:px-8 py-3`}
       >
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center space-x-2 overflow-x-auto">
             <span
-              className={`text-sm font-medium whitespace-nowrap ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+              className={`text-sm font-medium whitespace-nowrap ${
+                darkMode ? "text-gray-300" : "text-gray-600"
+              }`}
             >
               Filter by tags:
             </span>
@@ -229,27 +262,27 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
                 selectedTags.length === 0
                   ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                   : darkMode
-                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               All
             </button>
             {(allTags || []).map((tag) => (
-        <button
-          key={tag}
-          onClick={() => toggleTag(tag)}
-          className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
-            selectedTags.includes(tag)
-              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-              : darkMode
-              ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-        >
-          {tag}
-        </button>
-      ))}
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                  selectedTags.includes(tag)
+                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                    : darkMode
+                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -259,7 +292,11 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
           {filteredNotes.map((note) => (
             <div
               key={note.id}
-              className={`group ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} 
+              className={`group ${
+                darkMode
+                  ? "bg-gray-800 border-gray-700"
+                  : "bg-white border-gray-200"
+              } 
                          border rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden`}
             >
               {note.image && (
@@ -275,7 +312,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
               <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <h3
-                    className={`font-semibold text-lg leading-tight ${darkMode ? "text-white" : "text-gray-900"}`}
+                    className={`font-semibold text-lg leading-tight ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}
                   >
                     {note.title}
                   </h3>
@@ -304,7 +343,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
                 </div>
 
                 <p
-                  className={`text-sm mb-3 line-clamp-3 ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+                  className={`text-sm mb-3 line-clamp-3 ${
+                    darkMode ? "text-gray-300" : "text-gray-600"
+                  }`}
                 >
                   {note.content}
                 </p>
@@ -322,7 +363,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
                 </div>
 
                 <div
-                  className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                  className={`text-xs ${
+                    darkMode ? "text-gray-400" : "text-gray-500"
+                  }`}
                 >
                   {note.createdAt}
                 </div>
@@ -335,7 +378,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
           <div className="text-center py-12">
             <i className="fas fa-search text-4xl text-gray-400 mb-4"></i>
             <h3
-              className={`text-lg font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-900"}`}
+              className={`text-lg font-medium mb-2 ${
+                darkMode ? "text-gray-300" : "text-gray-900"
+              }`}
             >
               No notes found
             </h3>
@@ -358,14 +403,22 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div
-            className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto`}
+            className={`${
+              darkMode ? "bg-gray-800" : "bg-white"
+            } rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto`}
           >
             <div
-              className={`sticky top-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-b px-6 py-4`}
+              className={`sticky top-0 ${
+                darkMode
+                  ? "bg-gray-800 border-gray-700"
+                  : "bg-white border-gray-200"
+              } border-b px-6 py-4`}
             >
               <div className="flex items-center justify-between">
                 <h2
-                  className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}
+                  className={`text-xl font-semibold ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}
                 >
                   {editingNote ? "Edit Note" : "Add New Note"}
                 </h2>
@@ -385,7 +438,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
             <div className="p-6 space-y-4">
               <div>
                 <label
-                  className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                  className={`block text-sm font-medium mb-2 ${
+                    darkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
                 >
                   Title
                 </label>
@@ -406,7 +461,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
 
               <div>
                 <label
-                  className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                  className={`block text-sm font-medium mb-2 ${
+                    darkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
                 >
                   Content
                 </label>
@@ -427,7 +484,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
 
               <div>
                 <label
-                  className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                  className={`block text-sm font-medium mb-2 ${
+                    darkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
                 >
                   Tags (comma separated)
                 </label>
@@ -448,7 +507,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
 
               <div>
                 <label
-                  className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                  className={`block text-sm font-medium mb-2 ${
+                    darkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
                 >
                   Image
                 </label>
@@ -461,8 +522,8 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
                     dragActive
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                       : darkMode
-                        ? "border-gray-600 hover:border-gray-500"
-                        : "border-gray-300 hover:border-gray-400"
+                      ? "border-gray-600 hover:border-gray-500"
+                      : "border-gray-300 hover:border-gray-400"
                   }`}
                   onClick={() => fileInputRef.current?.click()}
                 >
@@ -474,7 +535,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
                         className="mx-auto max-h-32 rounded-lg object-cover"
                       />
                       <p
-                        className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+                        className={`text-sm ${
+                          darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
                       >
                         Click to change image
                       </p>
@@ -483,7 +546,9 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
                     <div className="space-y-2">
                       <i className="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
                       <p
-                        className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+                        className={`text-sm ${
+                          darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
                       >
                         Drag and drop an image here, or click to select
                       </p>
@@ -501,7 +566,11 @@ const NotesApp = ({ user = { name: "John Doe", email: "john@example.com" } }) =>
             </div>
 
             <div
-              className={`sticky bottom-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-t px-6 py-4`}
+              className={`sticky bottom-0 ${
+                darkMode
+                  ? "bg-gray-800 border-gray-700"
+                  : "bg-white border-gray-200"
+              } border-t px-6 py-4`}
             >
               <div className="flex items-center justify-end space-x-3">
                 <button

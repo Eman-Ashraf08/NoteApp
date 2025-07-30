@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchUserLogin } from "../features/thunks/authThunk";
+import { useNavigate, Link } from "react-router-dom";
 
 const Login = ({ setCurrentPage }) => {
   const [loginForm, setLoginForm] = useState({
@@ -8,11 +10,13 @@ const Login = ({ setCurrentPage }) => {
   });
 
   const [formErrors, setFormErrors] = useState({});
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const { loading, error } = useSelector((state) => state.auth);
 
   const validateForm = () => {
     const errors = {};
-
     if (!loginForm.email.trim()) {
       errors.email = "Email is required.";
     } else if (!/\S+@\S+\.\S+/.test(loginForm.email)) {
@@ -26,17 +30,26 @@ const Login = ({ setCurrentPage }) => {
     return errors;
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-    } else {
-      setFormErrors({});
-      console.log("Logging in:", loginForm);
-      // Navigate to /home only if form is valid
-      navigate("/home");
+      return;
+    }
+
+    setFormErrors({});
+    try {
+      const resultAction = await dispatch(fetchUserLogin(loginForm));
+
+      if (fetchUserLogin.fulfilled.match(resultAction)) {
+        navigate("/home");
+      } else {
+        console.error("Login failed:", resultAction.payload);
+      }
+    } catch (err) {
+      console.error("Unexpected error during login:", err);
     }
   };
 
@@ -105,11 +118,20 @@ const Login = ({ setCurrentPage }) => {
               )}
             </div>
 
+            {error && (
+              <p className="text-sm text-red-600 text-center">
+                {typeof error === "string"
+                  ? error
+                  : error?.message || "Login failed"}
+              </p>
+            )}
+
             <button
               type="submit"
+              disabled={loading}
               className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer transition-colors"
             >
-              Sign In
+              {loading ? "Signing In..." : "Sign In"}
             </button>
           </form>
 

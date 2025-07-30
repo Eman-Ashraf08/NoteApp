@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchUserLogin, userUpdateProfile } from "../thunks/authThunk";
+import { fetchUserLogin } from "../thunks/authThunk";
 
 const initialState = {
   loading: false,
@@ -17,43 +17,29 @@ const authSlice = createSlice({
       state.status = "idle";
       state.loading = false;
       state.error = null;
+
+      // Optional: remove token from localStorage
+      localStorage.removeItem("_token");
     },
   },
   extraReducers: (builder) => {
     builder
       // user Login
-      .addCase(fetchUserLogin.fulfilled, (state, action) => {
-        state.user = action.payload;
-        state.status = "succeeded";
-        state.loading = false;
-        state.error = null;
-      })
       .addCase(fetchUserLogin.pending, (state) => {
         state.loading = true;
         state.status = "pending";
+      })
+      .addCase(fetchUserLogin.fulfilled, (state, action) => {
+        state.user = action.payload; // action.payload = user
+        state.status = "succeeded";
+        state.loading = false;
+        state.error = null;
       })
       .addCase(fetchUserLogin.rejected, (state, action) => {
         state.loading = false;
         state.status = "failed";
         state.error = action.payload;
-      })
-      
-    //  userupdateprofile
-      .addCase(userUpdateProfile.fulfilled, (state, action) => {
-        state.user = action.payload;
-        state.status = "succeeded";
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(userUpdateProfile.pending, (state) => {
-        state.loading = true;
-        state.status = "pending";
-      })
-      .addCase(userUpdateProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.status = "failed";
-        state.error = action.payload;
-      })
+      });
   },
 });
 

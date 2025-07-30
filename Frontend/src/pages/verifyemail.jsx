@@ -1,29 +1,29 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 
-const EmailVerification = ({ user, setCurrentPage }) => {
+const EmailVerification = () => {
   const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
   const [verificationError, setVerificationError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
   const verificationInputRefs = useRef([]);
-  const navigate = useNavigate(); // <-- Initialize navigation
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Countdown for resend
+  // Email from navigation state OR localStorage fallback (refresh safe)
+  const userEmail = location?.state?.email || localStorage.getItem("verify_email") || "";
+
   useEffect(() => {
-    if (resendCooldown > 0) {
-      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
-      return () => clearTimeout(timer);
+    // Agar email hi na ho to wapas registration par
+    if (!userEmail) {
+      navigate("/register");
     }
-  }, [resendCooldown]);
+  }, [userEmail, navigate]);
 
   const handleVerificationCodeChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return; // Only allow numbers
+    if (!/^\d*$/.test(value)) return;
     const newCode = [...verificationCode];
     newCode[index] = value;
     setVerificationCode(newCode);
-
-    // Move to next input if digit entered
     if (value && index < 5) {
       verificationInputRefs.current[index + 1]?.focus();
     }
@@ -35,27 +35,38 @@ const EmailVerification = ({ user, setCurrentPage }) => {
     }
   };
 
-  const handleVerifyEmail = () => {
+  const handleVerifyEmail = async () => {
     setIsVerifying(true);
     setVerificationError("");
 
     const code = verificationCode.join("");
 
-    // Simulate async verification
-    setTimeout(() => {
-      setIsVerifying(false);
-      if (code === "123456") {
-        // Navigate to login page if verification is successful
-        navigate("/login");
-      } else {
-        setVerificationError("Invalid verification code.");
-      }
-    }, 1500);
-  };
+    try {
+      // Backend yahan email + code expect karta hai (Postman jaisa)
+      const res = await fetch("http://localhost:8000/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, code }),
+      });
 
-  const handleResendCode = () => {
-    setResendCooldown(30); // 30 second cooldown
-    alert("Verification code resent!");
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch {}
+
+      if (!res.ok) {
+        setVerificationError(data.message || "Invalid verification code.");
+        return;
+      }
+
+      // Verification success
+      localStorage.removeItem("verify_email");
+      navigate("/login");
+
+    } catch (error) {
+      setVerificationError("Something went wrong. Try again.");
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -67,14 +78,14 @@ const EmailVerification = ({ user, setCurrentPage }) => {
               <i className="fas fa-envelope-open-text text-3xl text-green-600"></i>
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Verify Your Email</h2>
-            <p className="text-gray-600 mb-2">We've sent a 6-digit verification code to</p>
-            <p className="font-medium text-gray-900">{user?.email}</p>
+            <p className="text-gray-600 mb-2">Enter the 6-digit code sent to</p>
+            <p className="font-medium text-gray-900">{userEmail}</p>
           </div>
 
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
-                Enter verification code
+                Verification Code
               </label>
               <div className="flex justify-center space-x-3">
                 {verificationCode.map((digit, index) => (
@@ -84,9 +95,7 @@ const EmailVerification = ({ user, setCurrentPage }) => {
                     type="text"
                     maxLength={1}
                     value={digit}
-                    onChange={(e) =>
-                      handleVerificationCodeChange(index, e.target.value)
-                    }
+                    onChange={(e) => handleVerificationCodeChange(index, e.target.value)}
                     onKeyDown={(e) => handleVerificationKeyDown(index, e)}
                     className="w-12 h-12 text-center text-xl font-bold border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     inputMode="numeric"
@@ -104,7 +113,7 @@ const EmailVerification = ({ user, setCurrentPage }) => {
             <button
               onClick={handleVerifyEmail}
               disabled={isVerifying || verificationCode.join("").length !== 6}
-              className={`w-full px-4 py-3 font-medium rounded-lg cursor-pointer transition-colors ${
+              className={`w-full px-4 py-3 font-medium rounded-lg transition-colors ${
                 isVerifying || verificationCode.join("").length !== 6
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : "bg-green-600 hover:bg-green-700 text-white"
@@ -121,32 +130,14 @@ const EmailVerification = ({ user, setCurrentPage }) => {
             </button>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 text-sm mb-3">Didn't receive the code?</p>
-            <button
-              onClick={handleResendCode}
-              disabled={resendCooldown > 0}
-              className={`text-sm font-medium cursor-pointer transition-colors ${
-                resendCooldown > 0
-                  ? "text-gray-400 cursor-not-allowed"
-                  : "text-green-600 hover:text-green-700"
-              }`}
-            >
-              {resendCooldown > 0
-                ? `Resend code in ${resendCooldown}s`
-                : "Resend verification code"}
-            </button>
-          </div>
-
           <div className="mt-6 pt-6 border-t border-gray-200 text-center">
             <Link to="/register">
               <button
                 onClick={() => {
-                  setCurrentPage("register");
                   setVerificationCode(["", "", "", "", "", ""]);
                   setVerificationError("");
                 }}
-                className="text-gray-500 hover:text-gray-700 text-sm cursor-pointer"
+                className="text-gray-500 hover:text-gray-700 text-sm"
               >
                 <i className="fas fa-arrow-left mr-2"></i>
                 Change email address

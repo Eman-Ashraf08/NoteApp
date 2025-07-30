@@ -1,26 +1,20 @@
 import AppInstance from "./apiBaseUrl";
 import axios from "axios";
+
 // Routing
 export const userAPI = {
   // user login
   UserLogin: async (data) => {
     try {
       const response = await AppInstance.post("/api/auth/login", data);
-      const token = response.data.result.accessToken;
-      localStorage.setItem("_token", token);
-      return response;
-    } catch (error) {
-      return handleError(error);
-    }
-  },
- 
-  // userupdateprofile
-  UserUpdateProfile: async (data, auth) => {  
-    try {
-      const userId = auth?.user?._id;
-      const existId = auth?._id
-      const response = await AppInstance.patch(`/api/auth/${userId || existId}`, data);
-      return response;
+
+      const { accessToken, user } = response.data.result;
+
+      // Save token
+      localStorage.setItem("_token", accessToken);
+
+      // Return user and token to thunk
+      return { user, token: accessToken };
     } catch (error) {
       return handleError(error);
     }

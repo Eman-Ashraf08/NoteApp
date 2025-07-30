@@ -4,7 +4,6 @@ const { httpsCodes } = require("../constants/httpsCodes");
 const { language } = require("../constants/language");
 const User = require("../models/user.model");
 const { dispatchAnEmail } = require("../helper/helper");
-const { uploadToCloudinary } = require("../helper/helper");
 const { generateAccessToken, generateRefreshToken } = require("../helper/jwtToken");
 const bcrypt = require("bcrypt");
 
@@ -34,6 +33,26 @@ class AuthManager {
       return error;
     }
   }
+
+  static async getUser(userId) {
+    try {
+      const userData = await User.findById(userId);
+      if (!userData) {
+        return {
+          status: httpsCodes.NOT_FOUND,
+          message: language.RECORD_NOT_FOUND,
+        };
+      }
+      return {
+        status: httpsCodes.SUCCESS_CODE,
+        message: language.RECORD_FOUND,
+        user: userData,
+      };
+    } catch (error) {
+      console.error("Error in AuthManager.getUser:", error);
+      throw error;
+    }
+  }
   static async login(reqObj) {
     try {
       const { email, password } = reqObj;
@@ -47,7 +66,6 @@ class AuthManager {
           message: language.NOT_REGISTER,
         };
       }
-
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return {
@@ -72,7 +90,6 @@ class AuthManager {
       throw error;
     }
   }
-
   static async verifyEmail(reqObj) {
     try {
       let result = {};
@@ -94,35 +111,6 @@ class AuthManager {
         };
       }
       return result;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async verifyOtp(reqObj) {
-    try {
-      const user = await User.findOne({
-        email: reqObj.email,
-        otp: reqObj.otp,
-      });
-
-      if (!user) {
-        return {
-          status: httpsCodes.NOT_FOUND,
-          message: language.INVALID_OTP,
-        };
-      }
-      const result = await User.updateOne(
-        { email: reqObj.email },
-        reqObj
-      );
-
-      if (result) {
-        return {
-          status: httpsCodes.SUCCESS_CODE,
-          message: language.OTP_VERIFIED,
-        };
-      }
     } catch (error) {
       throw error;
     }

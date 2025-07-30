@@ -6,11 +6,13 @@ const Registration = () => {
   const [registerForm, setRegisterForm] = useState({
     name: "",
     email: "",
-    password: "", 
+    password: "",
     confirmPassword: "",
   });
 
   const [formErrors, setFormErrors] = useState({});
+  const [apiError, setApiError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const validateForm = () => {
     const errors = {};
@@ -32,17 +34,73 @@ const Registration = () => {
     return errors;
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     const errors = validateForm();
+    setApiError("");
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-    } else {
-      setFormErrors({});
-      navigate("/verify-email", {
-        state: { email: registerForm.email },
+      return;
+    }
+
+    setFormErrors({});
+    setLoading(true);
+
+    try {
+      // 1) SIGNUP
+      const signupRes = await fetch("http://localhost:8000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: registerForm.name.trim(),
+          email: registerForm.email.trim(),
+          password: registerForm.password,
+        }),
       });
+
+      const signupText = await signupRes.text();
+      let signupData = {};
+      try { signupData = signupText ? JSON.parse(signupText) : {}; } catch {}
+
+      if (signupRes.status === 409) {
+        setApiError(signupData.message || "Email already exists.");
+        return;
+      }
+      if (!signupRes.ok) {
+        setApiError(signupData.message || "Registration failed. Try again.");
+        return;
+      }
+
+      // 2) SEND OTP via /verify-email (email-only)
+      const email = registerForm.email.trim();
+      const verifySendRes = await fetch("http://localhost:8000/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // ⚠️ Backend yahan sirf email expect karta hai (Postman jaisa)
+        body: JSON.stringify({ email }),
+      });
+
+      const verifySendText = await verifySendRes.text();
+      let verifySendData = {};
+      try { verifySendData = verifySendText ? JSON.parse(verifySendText) : {}; } catch {}
+
+      if (!verifySendRes.ok) {
+        // Agar OTP send fail ho jaye to yahin error show kar dein
+        setApiError(verifySendData.message || "Failed to send verification code.");
+        return;
+      }
+
+      // Email ko persist karein taa-ke refresh par bhi mile
+      localStorage.setItem("verify_email", email);
+
+      // 3) Navigate to verification screen
+      navigate("/verify-email", { state: { email } });
+
+    } catch (err) {
+      setApiError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -58,121 +116,90 @@ const Registration = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               Create your account
             </h2>
-            <p className="text-gray-600">
-              Start organizing your thoughts today
-            </p>
+            <p className="text-gray-600">Start organizing your thoughts today</p>
           </div>
+
+          {apiError && (
+            <div className="mb-4 text-sm text-red-600 text-center">{apiError}</div>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
               <input
                 type="text"
                 value={registerForm.name}
-                onChange={(e) =>
-                  setRegisterForm({ ...registerForm, name: e.target.value })
-                }
+                onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
                 className={`w-full px-4 py-3 text-sm rounded-lg border ${
-                  formErrors.name
-                    ? "border-red-300 bg-red-50"
-                    : "border-gray-300 bg-white"
+                  formErrors.name ? "border-red-300 bg-red-50" : "border-gray-300 bg-white"
                 } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
                 placeholder="Enter your full name"
               />
-              {formErrors.name && (
-                <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
-              )}
+              {formErrors.name && <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
                 type="email"
                 value={registerForm.email}
-                onChange={(e) =>
-                  setRegisterForm({ ...registerForm, email: e.target.value })
-                }
+                onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                 className={`w-full px-4 py-3 text-sm rounded-lg border ${
-                  formErrors.email
-                    ? "border-red-300 bg-red-50"
-                    : "border-gray-300 bg-white"
+                  formErrors.email ? "border-red-300 bg-red-50" : "border-gray-300 bg-white"
                 } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
                 placeholder="Enter your email"
               />
-              {formErrors.email && (
-                <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
-              )}
+              {formErrors.email && <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
               <input
                 type="password"
                 value={registerForm.password}
-                onChange={(e) =>
-                  setRegisterForm({ ...registerForm, password: e.target.value })
-                }
+                onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                 className={`w-full px-4 py-3 text-sm rounded-lg border ${
-                  formErrors.password
-                    ? "border-red-300 bg-red-50"
-                    : "border-gray-300 bg-white"
+                  formErrors.password ? "border-red-300 bg-red-50" : "border-gray-300 bg-white"
                 } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
                 placeholder="Create a password"
               />
-              {formErrors.password && (
-                <p className="mt-1 text-sm text-red-600">
-                  {formErrors.password}
-                </p>
-              )}
+              {formErrors.password && <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
               <input
                 type="password"
                 value={registerForm.confirmPassword}
-                onChange={(e) =>
-                  setRegisterForm({
-                    ...registerForm,
-                    confirmPassword: e.target.value,
-                  })
-                }
+                onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
                 className={`w-full px-4 py-3 text-sm rounded-lg border ${
-                  formErrors.confirmPassword
-                    ? "border-red-300 bg-red-50"
-                    : "border-gray-300 bg-white"
+                  formErrors.confirmPassword ? "border-red-300 bg-red-50" : "border-gray-300 bg-white"
                 } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
                 placeholder="Confirm your password"
               />
               {formErrors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">
-                  {formErrors.confirmPassword}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
               )}
             </div>
+
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg cursor-pointer transition-colors"
+              disabled={loading}
+              className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg cursor-pointer transition-colors disabled:opacity-50"
             >
-              Create Account
+              {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
+
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Already have an account?{" "}
-              <Link
-                to="/login"
-                className="text-purple-600 hover:text-purple-700 font-medium"
-              >
+              <Link to="/login" className="text-purple-600 hover:text-purple-700 font-medium">
                 Sign in
               </Link>
             </p>
           </div>
+
           <div className="mt-6 text-center">
             <Link to="/">
               <button className="text-gray-500 hover:text-gray-700 text-sm cursor-pointer">

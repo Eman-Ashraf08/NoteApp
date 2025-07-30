@@ -2,10 +2,11 @@
 const express = require("express");
 const router = express.Router();
 const { httpsCodes } = require("../constants/httpsCodes");
-const upload = require("../helper/helper").upload;
 const authManager = require("../manager/authManager");
+
 router.post("/signup", async (req, res) => {
   const reqObj = { ...req.body };
+
   try {
     const result = await authManager.createUser(reqObj);
     const statusCode = result?.status || httpsCodes.SUCCESS_CODE;
@@ -33,6 +34,27 @@ router.post("/login", async (req, res) => {
     });
   }
 });
+// get user
+router.get("/:id", async (req, res, next) => {
+  try {
+    const userId = req.params.id; // Extract user ID from route parameters
+    if (!userId) {
+      return res.status(400).json({
+        status: httpsCodes.BAD_REQUEST,
+        message: "User ID is required.",
+      });
+    }
+
+    const result = await authManager.getUser(userId);
+    res.status(result.status).json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(httpsCodes.SERVER_ERROR_CODE).json({
+      error: error.message || "Internal Server Error",
+    });
+  }
+});
+
 // verify-email
 router.post("/verify-email", async (req, res, next) => {
   const reqObj = Object.assign({}, req.body);
@@ -49,23 +71,5 @@ router.post("/verify-email", async (req, res, next) => {
       });
     });
 });
-
-// verify otp
-router.post("/verify-otp", async (req, res, next) => {
-  const reqObj = Object.assign({}, req.body);
-  authManager
-    .verifyOtp(reqObj)
-    .then(async (result) => {
-      res.status(result.status).json(result);
-    })
-    .catch(async (error) => {
-      console.log(error);
-      res.send({
-        error: error,
-        status: httpsCodes.SERVER_ERROR_CODE,
-      });
-    });
-});
-
 
 module.exports = router;

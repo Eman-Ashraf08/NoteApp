@@ -26,7 +26,6 @@ function Navbar() {
                 to="/register"
                 className="text-blue-600 hover:text-blue-700 transition-colors">
               <button
-                onClick={() => setCurrentPage("register")}
                 className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors whitespace-nowrap"
               >
                 Get Started
