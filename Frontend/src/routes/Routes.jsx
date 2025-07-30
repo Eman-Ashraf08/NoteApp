@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import LandingPage from "../pages/landingpage";
 import Registration from "../pages/registration";
+import EmailVerification from "../pages/verifyemail";
 import Login from "../pages/login";
 import NotesApp from "../pages/home"
 const Loading = () => <div>Loading...</div>;
@@ -26,6 +27,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/register" element={<Registration />} />
+      <Route path="/verify-email" element={<EmailVerification />} />
       <Route path="/login" element={<Login />} />
       <Route path="/home" element={<NotesApp />} />
       <Route path="*" element={<div>404 Not Found</div>} />

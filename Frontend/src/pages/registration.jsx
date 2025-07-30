@@ -11,7 +11,6 @@ const Registration = () => {
   });
 
   const [formErrors, setFormErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState("");
 
   const validateForm = () => {
     const errors = {};
@@ -41,11 +40,9 @@ const Registration = () => {
       setFormErrors(errors);
     } else {
       setFormErrors({});
-      setSuccessMessage("Account has been created successfully!");
-      setTimeout(() => {
-        setSuccessMessage("");
-        navigate("/login");
-      }, 2000);
+      navigate("/verify-email", {
+        state: { email: registerForm.email },
+      });
     }
   };
 
@@ -65,12 +62,6 @@ const Registration = () => {
               Start organizing your thoughts today
             </p>
           </div>
-
-          {successMessage && (
-            <div className="mb-4 text-green-600 text-center font-medium">
-              {successMessage}
-            </div>
-          )}
 
           <form onSubmit={handleRegister} className="space-y-6">
             <div>
