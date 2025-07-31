@@ -63,21 +63,27 @@ static async getNotes(userId) {
 
   static async updateNote(noteId, updateData, file) {
     try {
-      let imageUrl = updateData.image || null;
+      let updateFields = {
+        ...updateData,
+        tags: updateData.tags?.split(",").map(t => t.trim()),
+      };
 
       if (file) {
+        // New image uploaded
         const fileName = `${Date.now()}-${file.originalname}`;
         const uploadResult = await uploadToCloudinary(file.buffer, fileName);
-        imageUrl = uploadResult.secure_url;
+        updateFields.image = uploadResult.secure_url;
+      } else if (updateData.image === "") {
+        // Remove image
+        updateFields.image = null;
+      } else {
+        // Do NOT update image field, keep old image
+        delete updateFields.image;
       }
 
       const updatedNote = await Note.findByIdAndUpdate(
         noteId,
-        {
-          ...updateData,
-          tags: updateData.tags?.split(",").map(t => t.trim()),
-          image: imageUrl,
-        },
+        updateFields,
         { new: true }
       );
 

@@ -34,7 +34,15 @@ router.patch("/:id", upload.single("image"), async (req, res) => {
   try {
     const noteId = req.params.id;
     const updateData = req.body;
+    // Debug log: show received data and file
+    console.log("PATCH /api/notes/:id received:", {
+      noteId,
+      updateData,
+      file: req.file,
+    });
     const result = await NoteManager.updateNote(noteId, updateData, req.file);
+    // Debug log: show result
+    console.log("PATCH /api/notes/:id result:", result);
     res.status(result.status).json(result);
   } catch (error) {
     console.error("Update Note Error:", error);

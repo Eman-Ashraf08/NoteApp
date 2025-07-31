@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
-import { useSelector } from "react-redux";
+import React, { useState, useRef, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchNotes, addNote as addNoteThunk, updateNote as updateNoteThunk, deleteNote as deleteNoteThunk } from "../features/thunks/notesThunk";
 import { useNavigate } from "react-router-dom";
 
 const NotesApp = () => {
@@ -9,8 +10,14 @@ const NotesApp = () => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
-  const [notes, setNotes] = useState([]);
+  const dispatch = useDispatch();
+  const { notes, loading } = useSelector((state) => state.notes);
   const navigate = useNavigate();
+  useEffect(() => {
+  if (user?._id) {
+    dispatch(fetchNotes(user._id));
+  }
+}, [dispatch, user]);
   const [newNote, setNewNote] = useState({
     title: "",
     content: "",
@@ -42,18 +49,15 @@ const NotesApp = () => {
     );
   };
 
-  const handleAddNote = (note) => {
-    const newNoteObj = {
-      ...note,
-      id: Date.now(),
-      tags: note.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      createdAt: new Date().toLocaleString(),
-    };
-    setNotes((prev) => [...prev, newNoteObj]);
-  };
+ const handleAddNote = async (note) => {
+  await dispatch(addNoteThunk({
+    title: note.title,
+    content: note.content,
+    tags: note.tags,
+    userId: user._id,
+    image: note.image instanceof File ? note.image : undefined
+  }));
+};
 
   const handleEditNote = (note) => {
     setEditingNote(note);
@@ -61,27 +65,30 @@ const NotesApp = () => {
     setShowAddModal(true);
   };
 
-  const handleUpdateNote = (updatedNote) => {
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === editingNote.id
-          ? {
-              ...updatedNote,
-              id: editingNote.id,
-              tags: updatedNote.tags
-                .split(",")
-                .map((t) => t.trim())
-                .filter(Boolean),
-              createdAt: editingNote.createdAt,
-            }
-          : n
-      )
-    );
-  };
+ const handleUpdateNote = async (updatedNote) => {
+  // Send tags as comma-separated string for backend compatibility
+  const tagsString = typeof updatedNote.tags === "string"
+    ? updatedNote.tags
+    : (updatedNote.tags || []).join(",");
 
-  const handleDeleteNote = (id) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-  };
+  await dispatch(updateNoteThunk({
+    id: editingNote._id,
+    title: updatedNote.title,
+    content: updatedNote.content,
+    tags: tagsString,
+    image: updatedNote.image,
+    userId: user._id,
+  }));
+  // Force refresh notes from backend after update
+  if (user?._id) {
+    await dispatch(fetchNotes(user._id));
+  }
+};
+
+const handleDeleteNote = async (id) => {
+  await dispatch(deleteNoteThunk(id));
+};
+
 
   const handleLogout = () => {
     localStorage.removeItem("_token");
@@ -95,28 +102,20 @@ const NotesApp = () => {
     else if (e.type === "dragleave") setDragActive(false);
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) =>
-        setNewNote((prev) => ({ ...prev, image: e.target.result }));
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) =>
-        setNewNote((prev) => ({ ...prev, image: e.target.result }));
-      reader.readAsDataURL(file);
-    }
-  };
+ const handleDrop = (e) => {
+  e.preventDefault();
+  setDragActive(false);
+  const file = e.dataTransfer.files?.[0];
+  if (file) {
+    setNewNote((prev) => ({ ...prev, image: file }));
+  }
+};
+ const handleFileSelect = (e) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    setNewNote((prev) => ({ ...prev, image: file }));
+  }
+};
 
   return (
     <div
@@ -291,7 +290,7 @@ const NotesApp = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredNotes.map((note) => (
             <div
-              key={note.id}
+              key={note._id || note.id}
               className={`group ${
                 darkMode
                   ? "bg-gray-800 border-gray-700"
@@ -330,7 +329,7 @@ const NotesApp = () => {
                       <i className="fas fa-edit text-sm"></i>
                     </button>
                     <button
-                      onClick={() => handleDeleteNote(note.id)}
+                      onClick={() => handleDeleteNote(note._id || note.id)}
                       className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
                         darkMode
                           ? "text-gray-400 hover:text-red-400 hover:bg-gray-700"
@@ -530,17 +529,35 @@ const NotesApp = () => {
                   {newNote.image ? (
                     <div className="space-y-2">
                       <img
-                        src={newNote.image}
+                        src={
+                          newNote.image instanceof File
+                            ? URL.createObjectURL(newNote.image)
+                            : newNote.image
+                        }
                         alt="Preview"
                         className="mx-auto max-h-32 rounded-lg object-cover"
                       />
-                      <p
-                        className={`text-sm ${
-                          darkMode ? "text-gray-300" : "text-gray-600"
-                        }`}
-                      >
-                        Click to change image
-                      </p>
+                      <div className="flex flex-col items-center space-y-1">
+                        <p
+                          className={`text-sm ${
+                            darkMode ? "text-gray-300" : "text-gray-600"
+                          }`}
+                        >
+                          Click to change image
+                        </p>
+                        {editingNote && newNote.image && typeof newNote.image === "string" && (
+                          <button
+                            type="button"
+                            className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNewNote((prev) => ({ ...prev, image: "" }));
+                            }}
+                          >
+                            Remove Image
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -599,7 +616,7 @@ const NotesApp = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </div> 
         </div>
       )}
     </div>
